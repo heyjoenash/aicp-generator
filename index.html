@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AICP Not-a-Judge Generator</title>
+  <meta name="description" content="I have once again not been selected. Generate your own AICP Not-a-Judge announcement." />
+  <meta property="og:title" content="AICP Not-a-Judge Generator" />
+  <meta property="og:description" content="I have once again not been selected as an AICP Post Awards Judge." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>AICP <span class="strike">Judge</span> Not-a-Judge Generator</h1>
+      <p class="subtitle">I have once again not been selected. Neither have you. Let's make it official.</p>
+    </header>
+
+    <div id="main-layout">
+      <!-- The Card Preview -->
+      <div id="card-wrapper">
+        <div id="card-container">
+          <canvas id="bg-canvas" width="1080" height="1080"></canvas>
+          <div id="card-overlay">
+            <div id="photo-frame">
+              <video id="webcam" autoplay muted playsinline></video>
+              <img id="uploaded-photo" alt="" />
+              <canvas id="photo-canvas"></canvas>
+              <div id="photo-placeholder">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <span>Take or upload a photo</span>
+              </div>
+            </div>
+            <div id="text-block">
+              <div id="prefix-text">ONCE AGAIN, NOT AN</div>
+              <div id="title-text">AICP POST AWARDS JUDGE</div>
+              <div id="category-text">WATCHING FROM THE COUCH</div>
+            </div>
+            <div id="bottom-block">
+              <div id="name-block">
+                <div id="first-name">YOUR</div>
+                <div id="last-name">NAME</div>
+              </div>
+              <div id="logo-block">
+                <svg id="aicp-logo" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+                  <!-- A - triangle -->
+                  <polygon points="0,60 22,4 44,60 34,60 22,20 10,60" fill="white"/>
+                  <!-- I - circle -->
+                  <circle cx="64" cy="38" r="18" fill="white"/>
+                  <!-- C - open arc -->
+                  <path d="M108,14 A28,28 0 1,0 108,62" fill="none" stroke="white" stroke-width="12" stroke-linecap="round"/>
+                  <!-- P - vertical + bowl -->
+                  <rect x="140" y="4" width="12" height="56" fill="white"/>
+                  <path d="M146,4 h12 a20,20 0 0,1 0,36 h-12" fill="none" stroke="white" stroke-width="12" stroke-linejoin="round"/>
+                </svg>
+                <div id="logo-subtext"><span id="show-type-label">POST AWARDS</span> 2026</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Panel -->
+      <div id="controls">
+        <div class="control-group">
+          <label class="control-label">Photo</label>
+          <div id="photo-controls">
+            <button id="webcam-btn" class="btn btn-secondary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              Webcam
+            </button>
+            <button id="upload-btn" class="btn btn-secondary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload
+            </button>
+            <button id="capture-btn" class="btn btn-primary" style="display:none">Capture</button>
+            <button id="retake-btn" class="btn btn-ghost" style="display:none">Retake</button>
+            <input type="file" id="file-input" accept="image/*" hidden />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="first-name-input">Your Name</label>
+          <div class="input-row">
+            <input type="text" id="first-name-input" placeholder="First" value="" />
+            <input type="text" id="last-name-input" placeholder="Last" value="" />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="category-input">Category</label>
+          <div class="input-row category-row">
+            <input type="text" id="category-input" value="WATCHING FROM THE COUCH" />
+            <button id="shuffle-btn" class="btn btn-icon" title="Random category">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Show</label>
+          <div id="show-toggle" class="toggle-group">
+            <button class="toggle-btn active" data-value="POST AWARDS">Post Awards</button>
+            <button class="toggle-btn" data-value="SHOW">Show</button>
+          </div>
+        </div>
+
+        <div class="control-group export-group">
+          <button id="export-png" class="btn btn-primary btn-large">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PNG
+          </button>
+          <button id="export-video" class="btn btn-primary btn-large">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Download Video
+          </button>
+        </div>
+
+        <div id="export-status" style="display:none">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <span class="progress-text">Recording...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
