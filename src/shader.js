@@ -82,26 +82,28 @@ const fragmentShaderSource = `
     return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
   }
 
-  // Layered noise for organic wave surface
+  // Layered noise — dominant first octave for large, sweeping folds
+  // Lower frequencies than V1 to match the real AICP thick liquid chrome waves
   float getHeight(vec2 p, float t) {
     float h = 0.0;
-    h += 0.55 * snoise(vec3(p * 0.8, t * 0.12));
-    h += 0.28 * snoise(vec3(p * 1.6 + 5.0, t * 0.18));
-    h += 0.14 * snoise(vec3(p * 3.2 + 10.0, t * 0.25));
-    h += 0.07 * snoise(vec3(p * 6.0 + 15.0, t * 0.3));
+    // Primary: large slow waves (carries ~70% of the shape)
+    h += 0.70 * snoise(vec3(p * 0.45, t * 0.08));
+    // Secondary: medium detail
+    h += 0.20 * snoise(vec3(p * 1.0 + 5.0, t * 0.12));
+    // Tertiary: subtle fine detail for realism
+    h += 0.10 * snoise(vec3(p * 2.2 + 10.0, t * 0.15));
     return h;
   }
 
   void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
-    // Scale the coordinate space for nice wave size
-    vec2 p = (uv - 0.5) * 3.5;
+    // Larger coordinate space → fewer, bigger waves across the frame
+    vec2 p = (uv - 0.5) * 2.8;
 
     float t = u_time;
 
-    // Compute height and normal via finite differences
-    float eps = 0.008;
-    float hC = getHeight(p, t);
+    // Compute normal via finite differences — small epsilon for sharp highlights
+    float eps = 0.004;
     float hR = getHeight(p + vec2(eps, 0.0), t);
     float hL = getHeight(p - vec2(eps, 0.0), t);
     float hU = getHeight(p + vec2(0.0, eps), t);
@@ -110,44 +112,65 @@ const fragmentShaderSource = `
     vec3 normal = normalize(vec3(
       (hL - hR) / (2.0 * eps),
       (hD - hU) / (2.0 * eps),
-      1.0
+      0.8  // Lower z-component = steeper perceived normals = more 3D
     ));
 
-    // Multiple lights for richer chrome reflections
-    vec3 viewDir = vec3(0.0, 0.0, 1.0);
+    // Slightly tilted view for perspective depth
+    vec3 viewDir = normalize(vec3(0.0, -0.12, 1.0));
 
-    // Key light — from upper right
-    vec3 light1 = normalize(vec3(0.5, 0.7, 1.0));
+    // --- Triple-lobe specular for chrome look ---
+
+    // Key light — upper left (matches reference highlight direction)
+    vec3 light1 = normalize(vec3(-0.4, 0.6, 0.9));
     vec3 ref1 = reflect(-light1, normal);
-    float spec1 = pow(max(dot(ref1, viewDir), 0.0), 90.0);
-    float diff1 = max(dot(normal, light1), 0.0);
+    float rawSpec1 = max(dot(ref1, viewDir), 0.0);
+    float sharpSpec1 = pow(rawSpec1, 200.0);  // Razor-sharp chrome highlight
+    float medSpec1 = pow(rawSpec1, 40.0);      // Medium glow around highlight
+    float broadSpec1 = pow(rawSpec1, 8.0);     // Broad ambient sheen
 
-    // Fill light — from upper left
-    vec3 light2 = normalize(vec3(-0.6, 0.4, 0.8));
+    // Fill light — upper right
+    vec3 light2 = normalize(vec3(0.5, 0.5, 0.8));
     vec3 ref2 = reflect(-light2, normal);
-    float spec2 = pow(max(dot(ref2, viewDir), 0.0), 60.0);
+    float rawSpec2 = max(dot(ref2, viewDir), 0.0);
+    float sharpSpec2 = pow(rawSpec2, 180.0);
+    float medSpec2 = pow(rawSpec2, 35.0);
 
-    // Rim light — from below
-    vec3 light3 = normalize(vec3(0.0, -0.8, 0.5));
+    // Rim light — from below-right for edge definition
+    vec3 light3 = normalize(vec3(0.3, -0.7, 0.4));
     vec3 ref3 = reflect(-light3, normal);
-    float spec3 = pow(max(dot(ref3, viewDir), 0.0), 40.0);
+    float spec3 = pow(max(dot(ref3, viewDir), 0.0), 60.0);
 
-    // Base color — near black with very subtle blue tint
-    vec3 baseColor = vec3(0.012, 0.012, 0.018);
+    // Fresnel rim — brighter at glancing angles (wave crests)
+    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
 
-    // Compose lighting
-    vec3 color = baseColor;
-    color += diff1 * 0.04 * vec3(1.0);
-    color += spec1 * 0.85 * vec3(0.85, 0.85, 0.9);   // Bright chrome highlight
-    color += spec2 * 0.45 * vec3(0.6, 0.6, 0.65);     // Secondary highlight
-    color += spec3 * 0.2 * vec3(0.4, 0.4, 0.45);      // Subtle rim
+    // Base color — near pure black
+    vec3 color = vec3(0.005, 0.005, 0.008);
 
-    // Slight vignette to darken edges
-    float vig = 1.0 - 0.3 * length(uv - 0.5);
-    color *= vig;
+    // Key light contributions
+    color += sharpSpec1 * 1.0 * vec3(0.92, 0.92, 0.96);   // Sharp chrome peak
+    color += medSpec1 * 0.18 * vec3(0.7, 0.7, 0.75);       // Medium glow
+    color += broadSpec1 * 0.03 * vec3(0.4, 0.4, 0.45);     // Ambient sheen
 
-    // Subtle contrast boost
-    color = pow(color, vec3(0.95));
+    // Fill light contributions
+    color += sharpSpec2 * 0.7 * vec3(0.85, 0.85, 0.9);
+    color += medSpec2 * 0.12 * vec3(0.5, 0.5, 0.55);
+
+    // Rim
+    color += spec3 * 0.25 * vec3(0.6, 0.6, 0.65);
+
+    // Fresnel edge glow
+    color += fresnel * 0.08 * vec3(0.5, 0.5, 0.55);
+
+    // Aggressive vignette — darken edges like the real AICP frames
+    float vig = 1.0 - 0.5 * pow(length(uv - 0.5) * 1.4, 2.0);
+    color *= max(vig, 0.0);
+
+    // EXTREME contrast curve — crush the shadows, separate the highlights
+    // This is the key to matching the real AICP look (near-black valleys, pure-white peaks)
+    color = pow(color, vec3(1.8));
+
+    // Clamp and output
+    color = clamp(color, 0.0, 1.0);
 
     gl_FragColor = vec4(color, 1.0);
   }

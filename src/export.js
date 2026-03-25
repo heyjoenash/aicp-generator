@@ -12,11 +12,17 @@ const LAYOUT = {
   },
   prefix: { top: 0.60, size: 0.032, weight: '500' },
   title: { top: 0.645, size: 0.058, weight: '700' },
-  category: { top: 0.72, size: 0.026, weight: '400', letterSpacing: 3 },
+  category: { top: 0.72, size: 0.026, weight: '400', letterSpacing: 4 },
   name: { top: 0.80, size: 0.055, weight: '700', lineHeight: 1.05 },
   logo: { bottom: 0.05, right: 0.06, width: 0.18 },
   logoText: { size: 0.016 },
 };
+
+// Pre-load the real AICP logo SVG
+let logoImage = null;
+const logoImg = new Image();
+logoImg.onload = () => { logoImage = logoImg; };
+logoImg.src = '/aicp-logo.svg';
 
 function getPhotoElement() {
   const uploaded = document.getElementById('uploaded-photo');
@@ -41,7 +47,7 @@ function drawCard(ctx, bgCanvas, state) {
     const px = (S - pw) / 2;
     const py = S * LAYOUT.photo.top;
 
-    // Draw with grayscale — we composite via temp canvas
+    // Draw with grayscale via temp canvas
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = pw;
     tempCanvas.height = ph;
@@ -49,12 +55,11 @@ function drawCard(ctx, bgCanvas, state) {
     tempCtx.filter = 'grayscale(1)';
 
     // Cover-fit the photo
-    const srcAspect = (photoEl.videoWidth || photoEl.naturalWidth || photoEl.width) /
-                      (photoEl.videoHeight || photoEl.naturalHeight || photoEl.height);
-    const dstAspect = pw / ph;
-    let sx = 0, sy = 0, sw, sh;
     const srcW = photoEl.videoWidth || photoEl.naturalWidth || photoEl.width;
     const srcH = photoEl.videoHeight || photoEl.naturalHeight || photoEl.height;
+    const srcAspect = srcW / srcH;
+    const dstAspect = pw / ph;
+    let sx = 0, sy = 0, sw, sh;
     if (srcAspect > dstAspect) {
       sh = srcH;
       sw = sh * dstAspect;
@@ -71,22 +76,22 @@ function drawCard(ctx, bgCanvas, state) {
   // 3. Draw text
   ctx.fillStyle = 'white';
   ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
 
   // Prefix: "ONCE AGAIN, NOT AN"
-  ctx.font = `${LAYOUT.prefix.weight} ${S * LAYOUT.prefix.size}px Oswald`;
+  ctx.font = `${LAYOUT.prefix.weight} ${S * LAYOUT.prefix.size}px Bebas Neue`;
   ctx.globalAlpha = 0.9;
   ctx.fillText(state.prefix, pad, S * LAYOUT.prefix.top);
   ctx.globalAlpha = 1.0;
 
   // Title: "AICP POST AWARDS JUDGE"
-  ctx.font = `${LAYOUT.title.weight} ${S * LAYOUT.title.size}px Oswald`;
+  ctx.font = `${LAYOUT.title.weight} ${S * LAYOUT.title.size}px Bebas Neue`;
   ctx.fillText(state.title, pad, S * LAYOUT.title.top);
 
-  // Category
-  ctx.font = `${LAYOUT.category.weight} ${S * LAYOUT.category.size}px Oswald`;
-  ctx.globalAlpha = 0.75;
+  // Category — with manual letter spacing
+  ctx.font = `${LAYOUT.category.weight} ${S * LAYOUT.category.size}px Fira Mono`;
+  ctx.globalAlpha = 0.7;
   const categoryText = state.category.toUpperCase();
-  // Manual letter spacing
   let cx = pad;
   for (let i = 0; i < categoryText.length; i++) {
     ctx.fillText(categoryText[i], cx, S * LAYOUT.category.top);
@@ -95,66 +100,32 @@ function drawCard(ctx, bgCanvas, state) {
   ctx.globalAlpha = 1.0;
 
   // Name
-  ctx.font = `${LAYOUT.name.weight} ${S * LAYOUT.name.size}px Oswald`;
+  ctx.font = `${LAYOUT.name.weight} ${S * LAYOUT.name.size}px Bebas Neue`;
   const nameY = S * LAYOUT.name.top;
-  ctx.fillText(state.firstName.toUpperCase(), pad, nameY);
-  ctx.fillText(state.lastName.toUpperCase(), pad, nameY + S * LAYOUT.name.size * LAYOUT.name.lineHeight);
+  ctx.fillText(state.firstName.toUpperCase() || 'YOUR', pad, nameY);
+  ctx.fillText(state.lastName.toUpperCase() || 'NAME', pad, nameY + S * LAYOUT.name.size * LAYOUT.name.lineHeight);
 
   // 4. Draw AICP logo
   drawLogo(ctx, S, state.showType);
 }
 
 function drawLogo(ctx, S, showType) {
+  if (!logoImage) return;
+
   const logoW = S * LAYOUT.logo.width;
-  const logoH = logoW * 0.45;
+  // The real SVG viewBox is 856x242, so aspect ratio ≈ 3.54:1
+  const logoH = logoW / 3.54;
   const lx = S - S * LAYOUT.logo.right - logoW;
-  const ly = S - S * LAYOUT.logo.bottom - logoH;
-  const scale = logoW / 200;
+  const ly = S - S * LAYOUT.logo.bottom - logoH - S * 0.03;
 
-  ctx.save();
-  ctx.translate(lx, ly);
-  ctx.scale(scale, scale);
+  ctx.drawImage(logoImage, lx, ly, logoW, logoH);
 
-  ctx.fillStyle = 'white';
-
-  // A — triangle
-  ctx.beginPath();
-  ctx.moveTo(0, 60);
-  ctx.lineTo(22, 4);
-  ctx.lineTo(44, 60);
-  ctx.lineTo(34, 60);
-  ctx.lineTo(22, 20);
-  ctx.lineTo(10, 60);
-  ctx.closePath();
-  ctx.fill();
-
-  // I — circle
-  ctx.beginPath();
-  ctx.arc(64, 38, 18, 0, Math.PI * 2);
-  ctx.fill();
-
-  // C — open arc
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 12;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.arc(100, 38, 24, -0.9, 0.9, true);
-  ctx.stroke();
-
-  // P — vertical bar + bowl
-  ctx.fillRect(140, 4, 12, 56);
-  ctx.beginPath();
-  ctx.arc(158, 22, 18, -Math.PI / 2, Math.PI / 2);
-  ctx.lineWidth = 10;
-  ctx.stroke();
-
-  ctx.restore();
-
-  // Logo subtext
-  ctx.font = `500 ${S * LAYOUT.logoText.size}px Oswald`;
+  // Logo subtext: "NOT AWARDS 2026"
+  ctx.font = `500 ${S * LAYOUT.logoText.size}px Bebas Neue`;
   ctx.fillStyle = 'white';
   ctx.textAlign = 'right';
-  ctx.fillText(`NOT AWARDS 2026`, S - S * LAYOUT.logo.right, ly + logoH + S * 0.015);
+  ctx.textBaseline = 'top';
+  ctx.fillText(`NOT AWARDS 2026`, S - S * LAYOUT.logo.right, ly + logoH + S * 0.008);
   ctx.textAlign = 'left';
 }
 
