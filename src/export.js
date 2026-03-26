@@ -6,10 +6,10 @@ const EXPORT_SIZE = 1080;
 const LAYOUT = {
   padding: 0.06,
   photo: { top: 0.06, width: 0.62, aspectRatio: 4 / 3.2 },
-  prefix: { top: 0.60, size: 0.032, weight: '500' },
-  title: { top: 0.645, size: 0.058, weight: '700' },
+  prefix: { top: 0.60, size: 0.032, weight: '400' },
+  title: { top: 0.645, size: 0.058, weight: '400' },
   category: { top: 0.72, size: 0.026, weight: '400', letterSpacing: 4 },
-  name: { top: 0.80, size: 0.055, weight: '700', lineHeight: 1.05 },
+  name: { top: 0.80, size: 0.055, weight: '400', lineHeight: 1.05 },
   logo: { bottom: 0.05, right: 0.06, width: 0.18 },
   logoText: { size: 0.016 },
 };

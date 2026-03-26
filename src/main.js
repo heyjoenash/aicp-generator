@@ -228,6 +228,13 @@ retakeBtn.addEventListener('click', () => {
 // Mirror webcam feed
 webcamVideo.style.transform = 'scaleX(-1)';
 
+// Clean up webcam on page close (privacy)
+window.addEventListener('beforeunload', () => {
+  if (webcamStream) {
+    webcamStream.getTracks().forEach((t) => t.stop());
+  }
+});
+
 // --- Export ---
 
 exportPngBtn.addEventListener('click', () => {
@@ -282,7 +289,7 @@ const POST_TEMPLATES = [
 
   (s) => `Congratulations to everyone who was selected as an AICP judge this year. I was not. I'm fine. This is fine.\n\nGenerate yours at ${SITE_URL}\n\n#AICP #NotAJudge`,
 
-  (s) => `THRILLED to announce that ${s.name} will NOT be judging ${s.category} at the 2026 AICP ${s.showType}. If anyone needs me, I'll be refreshing my email until 2027. #AICP #MaybeNextYear`,
+  (s) => `THRILLED to announce that ${s.name} will NOT be judging ${s.category} at the ${new Date().getFullYear()} AICP ${s.showType}. If anyone needs me, I'll be refreshing my email until ${new Date().getFullYear() + 1}. #AICP #MaybeNextYear`,
 ];
 
 let postIndex = 0;
@@ -315,9 +322,15 @@ copyPostBtn.addEventListener('click', async () => {
   const text = generatePost();
   try {
     await navigator.clipboard.writeText(text);
-    const original = copyPostBtn.textContent;
+    const svg = copyPostBtn.querySelector('svg');
+    const originalText = 'Copy Text';
+    if (svg) svg.style.display = 'none';
     copyPostBtn.textContent = 'Copied!';
-    setTimeout(() => { copyPostBtn.textContent = original; }, 2000);
+    setTimeout(() => {
+      copyPostBtn.textContent = '';
+      if (svg) { copyPostBtn.appendChild(svg); svg.style.display = ''; }
+      copyPostBtn.append(` ${originalText}`);
+    }, 2000);
   } catch {
     // Fallback: select text in the preview
     const range = document.createRange();
