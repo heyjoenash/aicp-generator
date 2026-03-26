@@ -39,7 +39,7 @@ header {
 header h1 {
   font-family: var(--font-card);
   font-weight: 400;
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 4vw, 3.2rem);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   color: var(--accent);
@@ -52,8 +52,11 @@ header .strike {
 
 header .subtitle {
   color: var(--text-muted);
-  font-size: 0.95rem;
-  margin-top: 0.5rem;
+  font-size: clamp(0.85rem, 1.5vw, 1.15rem);
+  margin-top: 0.6rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Main Layout */
@@ -65,7 +68,7 @@ header .subtitle {
 
 /* Card Preview */
 #card-wrapper {
-  flex: 0 0 540px;
+  flex: 0 0 580px;
   position: sticky;
   top: 2rem;
 }
@@ -488,15 +491,6 @@ input[type="text"]::placeholder {
 
   header {
     margin-bottom: 1.5rem;
-  }
-
-  header h1 {
-    font-size: 1.4rem;
-  }
-
-  header .subtitle {
-    font-size: 0.8rem;
-    line-height: 1.4;
   }
 
   #card-wrapper {
