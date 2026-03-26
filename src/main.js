@@ -269,7 +269,7 @@ exportVideoBtn.addEventListener('click', async () => {
     );
   } catch (err) {
     console.error('Video export failed:', err);
-    alert('Video export failed. Try downloading as PNG instead.');
+    alert('Video export failed: ' + (err.message || err) + '\n\nTry downloading as PNG instead.');
   } finally {
     exportVideoBtn.disabled = false;
     exportPngBtn.disabled = false;
