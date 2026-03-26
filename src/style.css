@@ -272,14 +272,6 @@ input[type="text"]::placeholder {
   gap: 0.5rem;
 }
 
-.category-row {
-  position: relative;
-}
-
-.category-row input {
-  flex: 1;
-  padding-right: 3rem;
-}
 
 /* Buttons */
 .btn {
@@ -328,25 +320,6 @@ input[type="text"]::placeholder {
 }
 
 .btn-ghost:hover {
-  color: var(--text);
-}
-
-.btn-icon {
-  padding: 0.6rem;
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-icon:hover {
   color: var(--text);
 }
 
