@@ -1,13 +1,14 @@
-// Export functions: composite card to canvas, export as PNG or MP4/WebM video
+// Export functions: composite card to canvas, export as PNG or MP4 video
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+import HME from 'h264-mp4-encoder';
 
 const EXPORT_SIZE = 1080;
 
-// Mobile detection + export config
+// Mobile: lighter settings to avoid overwhelming phone GPUs
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 const VIDEO_CONFIG = isMobile
-  ? { size: 720, fps: 15, bitrate: 3_000_000, duration: 4000 }
-  : { size: 1080, fps: 30, bitrate: 8_000_000, duration: 6000 };
+  ? { size: 720, fps: 15, duration: 4000 }
+  : { size: 1080, fps: 30, duration: 6000 };
 
 const LAYOUT = {
   padding: 0.06,
@@ -29,28 +30,11 @@ logoImg.src = '/aicp-logo.svg';
 
 // --- Video support detection ---
 
-// iOS (all browsers use WebKit) can't record canvas streams via MediaRecorder
-const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-function detectVideoSupport() {
-  if (isIOS) return null; // Canvas stream recording broken on all iOS browsers
-  if (typeof VideoEncoder !== 'undefined') return 'mp4-encoder';
-  if (typeof MediaRecorder !== 'undefined') {
-    if (MediaRecorder.isTypeSupported('video/mp4')) return 'mp4-recorder';
-    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) return 'webm-vp9';
-    if (MediaRecorder.isTypeSupported('video/webm')) return 'webm';
-  }
-  return null;
-}
-
-export const videoSupport = detectVideoSupport();
-
-export const videoFormatLabel = (() => {
-  if (!videoSupport) return null;
-  if (videoSupport.startsWith('mp4')) return 'MP4';
-  return 'WebM';
-})();
+// Tier 1: Native VideoEncoder (Chrome/Edge desktop)
+// Tier 2: WASM H.264 encoder (everything else — iOS, Safari, Firefox, Android)
+const hasNativeEncoder = typeof VideoEncoder !== 'undefined';
+export const videoSupport = 'mp4'; // Always supported now via WASM fallback
+export const videoFormatLabel = 'MP4';
 
 // --- iOS-safe download ---
 
@@ -97,7 +81,7 @@ function getPhotoElement() {
 function drawCard(ctx, bgCanvas, state, S) {
   if (!S) S = EXPORT_SIZE;
   const pad = S * LAYOUT.padding;
-  const lsScale = S / EXPORT_SIZE; // Scale letter-spacing proportionally
+  const lsScale = S / EXPORT_SIZE;
 
   ctx.drawImage(bgCanvas, 0, 0, S, S);
 
@@ -132,14 +116,12 @@ function drawCard(ctx, bgCanvas, state, S) {
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
 
-  // Setup line: "ONCE AGAIN,"
   ctx.font = `${LAYOUT.setup.weight} ${S * LAYOUT.setup.size}px Bebas Neue`;
   ctx.globalAlpha = 0.7;
   ctx.fillStyle = 'white';
   ctx.fillText('ONCE AGAIN,', pad, S * LAYOUT.setup.top);
   ctx.globalAlpha = 1.0;
 
-  // Prefix: "NOT-A-JUDGE" with NOT in red
   ctx.font = `${LAYOUT.prefix.weight} ${S * LAYOUT.prefix.size}px Bebas Neue`;
   ctx.fillStyle = '#cc3333';
   ctx.fillText('NOT', pad, S * LAYOUT.prefix.top);
@@ -147,7 +129,6 @@ function drawCard(ctx, bgCanvas, state, S) {
   ctx.fillStyle = 'white';
   ctx.fillText('-A-JUDGE', pad + notWidth, S * LAYOUT.prefix.top);
 
-  // Title: "AICP POST AWARDS"
   ctx.font = `${LAYOUT.title.weight} ${S * LAYOUT.title.size}px Bebas Neue`;
   ctx.fillStyle = 'white';
   ctx.fillText('AICP ' + state.showType, pad, S * LAYOUT.title.top);
@@ -185,7 +166,7 @@ function drawLogo(ctx, S) {
   ctx.textAlign = 'left';
 }
 
-// --- PNG Export (always full 1080) ---
+// --- PNG Export ---
 
 export function exportPNG(bgCanvas, state) {
   const canvas = document.createElement('canvas');
@@ -199,9 +180,9 @@ export function exportPNG(bgCanvas, state) {
   }, 'image/png');
 }
 
-// --- Tier 1: MP4 via VideoEncoder + mp4-muxer (Chrome/Edge) ---
+// --- Tier 1: Native VideoEncoder + mp4-muxer (Chrome/Edge) ---
 
-async function exportVideoMP4Encoder(bgCanvas, shaderRender, state, onProgress) {
+async function exportVideoNative(bgCanvas, shaderRender, state, onProgress) {
   const S = VIDEO_CONFIG.size;
   const canvas = document.createElement('canvas');
   canvas.width = S;
@@ -224,7 +205,7 @@ async function exportVideoMP4Encoder(bgCanvas, shaderRender, state, onProgress) 
     codec: 'avc1.640028',
     width: S,
     height: S,
-    bitrate: VIDEO_CONFIG.bitrate,
+    bitrate: 8_000_000,
     framerate: VIDEO_CONFIG.fps,
   });
 
@@ -251,95 +232,56 @@ async function exportVideoMP4Encoder(bgCanvas, shaderRender, state, onProgress) 
   downloadBlob(blob, `aicp-not-a-judge-${state.firstName || 'export'}.mp4`);
 }
 
-// --- Tier 2: MP4 via MediaRecorder (Safari desktop + iOS) ---
+// --- Tier 2: WASM H.264 encoder (iOS, Safari, Firefox, Android — everything) ---
 
-function exportVideoRecorder(bgCanvas, shaderRender, state, onProgress, mimeType, ext) {
+async function exportVideoWASM(bgCanvas, shaderRender, state, onProgress) {
   const S = VIDEO_CONFIG.size;
-  return new Promise((resolve, reject) => {
-    // Safety timeout — if nothing happens, fail gracefully
-    const timeout = setTimeout(() => {
-      reject(new Error('Video recording timed out. Try downloading as PNG instead.'));
-    }, VIDEO_CONFIG.duration + 5000);
+  const canvas = document.createElement('canvas');
+  canvas.width = S;
+  canvas.height = S;
+  const ctx = canvas.getContext('2d');
 
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = S;
-      canvas.height = S;
-      const ctx = canvas.getContext('2d');
+  // Initialize WASM encoder
+  const encoder = await HME.createH264MP4Encoder();
+  encoder.width = S;
+  encoder.height = S;
+  encoder.frameRate = VIDEO_CONFIG.fps;
+  encoder.quantizationParameter = 18; // Quality: lower = better (10-51 range)
+  encoder.initialize();
 
-      const stream = canvas.captureStream(VIDEO_CONFIG.fps);
-      const recorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: VIDEO_CONFIG.bitrate,
-      });
+  const totalFrames = Math.round(VIDEO_CONFIG.duration / 1000 * VIDEO_CONFIG.fps);
+  let shaderTime = performance.now() / 1000;
 
-      const chunks = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
+  for (let i = 0; i < totalFrames; i++) {
+    shaderTime += 1 / VIDEO_CONFIG.fps;
+    shaderRender(shaderTime);
+    drawCard(ctx, bgCanvas, state, S);
 
-      recorder.onerror = (e) => {
-        clearTimeout(timeout);
-        reject(new Error('MediaRecorder error: ' + (e.error || 'unknown')));
-      };
+    // Get RGBA pixels from canvas and feed to encoder
+    const imageData = ctx.getImageData(0, 0, S, S);
+    encoder.addFrameRgba(imageData.data);
 
-      recorder.onstop = () => {
-        clearTimeout(timeout);
-        try {
-          const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
-          downloadBlob(blob, `aicp-not-a-judge-${state.firstName || 'export'}.${ext}`);
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      };
+    if (onProgress) onProgress(i / totalFrames);
 
-      const duration = VIDEO_CONFIG.duration;
-      const startTime = performance.now();
-      let shaderTime = performance.now() / 1000;
+    // Yield to UI thread so progress bar updates
+    if (i % 3 === 0) await new Promise(r => setTimeout(r, 0));
+  }
 
-      recorder.start(1000);
+  encoder.finalize();
 
-      function renderLoop() {
-        const elapsed = performance.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        if (onProgress) onProgress(progress);
+  const buffer = encoder.FS.readFile(encoder.outputFilename);
+  encoder.delete();
 
-        shaderTime += 1 / VIDEO_CONFIG.fps;
-        shaderRender(shaderTime);
-        drawCard(ctx, bgCanvas, state, S);
-
-        if (elapsed < duration) {
-          requestAnimationFrame(renderLoop);
-        } else {
-          recorder.stop();
-        }
-      }
-      renderLoop();
-    } catch (err) {
-      clearTimeout(timeout);
-      reject(err);
-    }
-  });
+  const blob = new Blob([buffer], { type: 'video/mp4' });
+  downloadBlob(blob, `aicp-not-a-judge-${state.firstName || 'export'}.mp4`);
 }
 
 // --- Main export dispatcher ---
 
 export async function exportVideo(bgCanvas, shaderRender, state, onProgress) {
-  switch (videoSupport) {
-    case 'mp4-encoder':
-      await exportVideoMP4Encoder(bgCanvas, shaderRender, state, onProgress);
-      break;
-    case 'mp4-recorder':
-      await exportVideoRecorder(bgCanvas, shaderRender, state, onProgress, 'video/mp4', 'mp4');
-      break;
-    case 'webm-vp9':
-      await exportVideoRecorder(bgCanvas, shaderRender, state, onProgress, 'video/webm;codecs=vp9', 'webm');
-      break;
-    case 'webm':
-      await exportVideoRecorder(bgCanvas, shaderRender, state, onProgress, 'video/webm', 'webm');
-      break;
-    default:
-      throw new Error('Video export is not supported in this browser.');
+  if (hasNativeEncoder) {
+    await exportVideoNative(bgCanvas, shaderRender, state, onProgress);
+  } else {
+    await exportVideoWASM(bgCanvas, shaderRender, state, onProgress);
   }
 }

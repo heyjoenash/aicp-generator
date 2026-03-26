@@ -128,7 +128,7 @@ toggleBtns.forEach((btn) => {
 
 function setExportEnabled(enabled) {
   exportPngBtn.disabled = !enabled;
-  if (videoSupport) exportVideoBtn.disabled = !enabled;
+  exportVideoBtn.disabled = !enabled;
   openLinkedinBtn.disabled = !enabled;
 }
 
@@ -251,13 +251,6 @@ exportPngBtn.addEventListener('click', () => {
   exportPNG(bgCanvas, state);
 });
 
-// Disable video button if browser can't export video (iOS)
-if (!videoSupport) {
-  exportVideoBtn.disabled = true;
-  exportVideoBtn.textContent = 'Video (desktop only)';
-  exportVideoBtn.title = 'Video export requires a desktop browser. Download PNG instead!';
-}
-
 exportVideoBtn.addEventListener('click', async () => {
   exportVideoBtn.disabled = true;
   exportPngBtn.disabled = true;
@@ -270,8 +263,7 @@ exportVideoBtn.addEventListener('click', async () => {
       state,
       (progress) => {
         progressFill.style.width = `${progress * 100}%`;
-        const totalSecs = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 4 : 6;
-        const secs = Math.ceil(totalSecs * (1 - progress));
+        const secs = Math.ceil((1 - progress) * 10);
         progressText.textContent = `Encoding ${videoFormatLabel}... ${secs}s remaining`;
       },
     );
@@ -279,7 +271,7 @@ exportVideoBtn.addEventListener('click', async () => {
     console.error('Video export failed:', err);
     alert('Video export failed. Try downloading as PNG instead.');
   } finally {
-    exportVideoBtn.disabled = !videoSupport;
+    exportVideoBtn.disabled = false;
     exportPngBtn.disabled = false;
     exportStatus.style.display = 'none';
     progressFill.style.width = '0%';
