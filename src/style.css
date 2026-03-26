@@ -76,6 +76,10 @@ header .subtitle {
   flex: 0 0 580px;
   position: sticky;
   top: 2rem;
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 1rem;
 }
 
 #card-container {
@@ -84,7 +88,6 @@ header .subtitle {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 4px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
 }
 
 #bg-canvas {
