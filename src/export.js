@@ -32,7 +32,10 @@ logoImg.src = '/aicp-logo.svg';
 
 // Tier 1: Native VideoEncoder (Chrome/Edge desktop)
 // Tier 2: WASM H.264 encoder (everything else — iOS, Safari, Firefox, Android)
-const hasNativeEncoder = typeof VideoEncoder !== 'undefined';
+// iOS exposes VideoEncoder but it doesn't actually work (produces null metadata)
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const hasNativeEncoder = !isIOS && typeof VideoEncoder !== 'undefined';
 export const videoSupport = 'mp4'; // Always supported now via WASM fallback
 export const videoFormatLabel = 'MP4';
 
