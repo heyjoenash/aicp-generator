@@ -354,35 +354,55 @@ shufflePostBtn.addEventListener('click', () => {
   generatePost();
 });
 
-copyPostBtn.addEventListener('click', async () => {
+copyPostBtn.addEventListener('click', () => {
   const text = generatePost();
-  try {
-    await navigator.clipboard.writeText(text);
-    const svg = copyPostBtn.querySelector('svg');
-    const originalText = 'Copy Text';
-    if (svg) svg.style.display = 'none';
-    copyPostBtn.textContent = 'Copied!';
-    setTimeout(() => {
-      copyPostBtn.textContent = '';
-      if (svg) { copyPostBtn.appendChild(svg); svg.style.display = ''; }
-      copyPostBtn.append(` ${originalText}`);
-    }, 2000);
-  } catch {
-    // Fallback: select text in the preview
-    const range = document.createRange();
-    range.selectNodeContents(postPreview);
-    window.getSelection().removeAllRanges();
-    window.getSelection().addRange(range);
+  let copied = false;
+
+  // Try modern clipboard API
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {}, () => {});
+    copied = true;
   }
+
+  // Fallback: textarea + execCommand for iOS
+  if (!copied) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  // Visual feedback
+  const svg = copyPostBtn.querySelector('svg');
+  if (svg) svg.style.display = 'none';
+  copyPostBtn.textContent = 'Copied!';
+  setTimeout(() => {
+    copyPostBtn.textContent = '';
+    if (svg) { copyPostBtn.appendChild(svg); svg.style.display = ''; }
+    copyPostBtn.append(' Copy Text');
+  }, 2000);
 });
 
-openLinkedinBtn.addEventListener('click', async () => {
+openLinkedinBtn.addEventListener('click', () => {
   const text = generatePost();
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // clipboard failed — user will need to copy manually
+
+  // Copy to clipboard — use execCommand fallback for iOS
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
   }
+
+  // Open LinkedIn — must be synchronous from click handler or iOS blocks it
   window.open('https://www.linkedin.com/feed/?shareActive=true', '_blank');
 });
 
