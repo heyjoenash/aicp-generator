@@ -1,4 +1,5 @@
-// Export functions: composite card to canvas, export as PNG or WebM video
+// Export functions: composite card to canvas, export as PNG or MP4 video
+import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 
 const EXPORT_SIZE = 1080;
 
@@ -47,14 +48,12 @@ function drawCard(ctx, bgCanvas, state) {
     const px = (S - pw) / 2;
     const py = S * LAYOUT.photo.top;
 
-    // Draw with grayscale via temp canvas
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = pw;
     tempCanvas.height = ph;
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.filter = 'grayscale(1)';
 
-    // Cover-fit the photo
     const srcW = photoEl.videoWidth || photoEl.naturalWidth || photoEl.width;
     const srcH = photoEl.videoHeight || photoEl.naturalHeight || photoEl.height;
     const srcAspect = srcW / srcH;
@@ -78,17 +77,14 @@ function drawCard(ctx, bgCanvas, state) {
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
 
-  // Prefix: "ONCE AGAIN, NOT AN"
   ctx.font = `${LAYOUT.prefix.weight} ${S * LAYOUT.prefix.size}px Bebas Neue`;
   ctx.globalAlpha = 0.9;
   ctx.fillText(state.prefix, pad, S * LAYOUT.prefix.top);
   ctx.globalAlpha = 1.0;
 
-  // Title: "AICP POST AWARDS JUDGE"
   ctx.font = `${LAYOUT.title.weight} ${S * LAYOUT.title.size}px Bebas Neue`;
   ctx.fillText(state.title, pad, S * LAYOUT.title.top);
 
-  // Category — with manual letter spacing
   ctx.font = `${LAYOUT.category.weight} ${S * LAYOUT.category.size}px Fira Mono`;
   ctx.globalAlpha = 0.7;
   const categoryText = state.category.toUpperCase();
@@ -99,13 +95,11 @@ function drawCard(ctx, bgCanvas, state) {
   }
   ctx.globalAlpha = 1.0;
 
-  // Name
   ctx.font = `${LAYOUT.name.weight} ${S * LAYOUT.name.size}px Bebas Neue`;
   const nameY = S * LAYOUT.name.top;
   ctx.fillText(state.firstName.toUpperCase() || 'YOUR', pad, nameY);
   ctx.fillText(state.lastName.toUpperCase() || 'NAME', pad, nameY + S * LAYOUT.name.size * LAYOUT.name.lineHeight);
 
-  // 4. Draw AICP logo
   drawLogo(ctx, S, state.showType);
 }
 
@@ -113,14 +107,12 @@ function drawLogo(ctx, S, showType) {
   if (!logoImage) return;
 
   const logoW = S * LAYOUT.logo.width;
-  // The real SVG viewBox is 856x242, so aspect ratio ≈ 3.54:1
   const logoH = logoW / 3.54;
   const lx = S - S * LAYOUT.logo.right - logoW;
   const ly = S - S * LAYOUT.logo.bottom - logoH - S * 0.03;
 
   ctx.drawImage(logoImage, lx, ly, logoW, logoH);
 
-  // Logo subtext: "NOT AWARDS 2026"
   ctx.font = `500 ${S * LAYOUT.logoText.size}px Bebas Neue`;
   ctx.fillStyle = 'white';
   ctx.textAlign = 'right';
@@ -128,6 +120,8 @@ function drawLogo(ctx, S, showType) {
   ctx.fillText(`NOT AWARDS 2026`, S - S * LAYOUT.logo.right, ly + logoH + S * 0.008);
   ctx.textAlign = 'left';
 }
+
+// --- PNG Export ---
 
 export function exportPNG(bgCanvas, state) {
   const canvas = document.createElement('canvas');
@@ -147,7 +141,74 @@ export function exportPNG(bgCanvas, state) {
   }, 'image/png');
 }
 
-export function exportVideo(bgCanvas, shaderRender, state, onProgress, onComplete) {
+// --- MP4 Video Export (H.264 via mp4-muxer + VideoEncoder) ---
+
+async function exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onComplete) {
+  const canvas = document.createElement('canvas');
+  canvas.width = EXPORT_SIZE;
+  canvas.height = EXPORT_SIZE;
+  const ctx = canvas.getContext('2d');
+
+  const target = new ArrayBufferTarget();
+  const muxer = new Muxer({
+    target,
+    video: {
+      codec: 'avc',
+      width: EXPORT_SIZE,
+      height: EXPORT_SIZE,
+    },
+    fastStart: 'in-memory',
+  });
+
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    error: (e) => console.error('VideoEncoder error:', e),
+  });
+
+  encoder.configure({
+    codec: 'avc1.640028',
+    width: EXPORT_SIZE,
+    height: EXPORT_SIZE,
+    bitrate: 8_000_000,
+    framerate: 30,
+  });
+
+  const totalFrames = 180; // 6 seconds at 30fps
+  let shaderTime = performance.now() / 1000;
+
+  for (let i = 0; i < totalFrames; i++) {
+    shaderTime += 1 / 30;
+    shaderRender(shaderTime);
+    drawCard(ctx, bgCanvas, state);
+
+    const frame = new VideoFrame(canvas, {
+      timestamp: (i / 30) * 1_000_000,
+    });
+    encoder.encode(frame, { keyFrame: i % 30 === 0 });
+    frame.close();
+
+    if (onProgress) onProgress(i / totalFrames);
+
+    // Yield to UI thread every few frames so progress bar updates
+    if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+
+  await encoder.flush();
+  muxer.finalize();
+
+  const blob = new Blob([target.buffer], { type: 'video/mp4' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `aicp-not-a-judge-${state.firstName || 'export'}.mp4`;
+  a.click();
+  URL.revokeObjectURL(url);
+  onComplete();
+}
+
+// --- WebM fallback (Firefox) ---
+
+function exportVideoWebM(bgCanvas, shaderRender, state, onProgress, onComplete) {
   const canvas = document.createElement('canvas');
   canvas.width = EXPORT_SIZE;
   canvas.height = EXPORT_SIZE;
@@ -175,7 +236,7 @@ export function exportVideo(bgCanvas, shaderRender, state, onProgress, onComplet
     onComplete();
   };
 
-  const duration = 6000; // 6 seconds
+  const duration = 6000;
   const startTime = performance.now();
   let shaderTime = performance.now() / 1000;
 
@@ -184,14 +245,10 @@ export function exportVideo(bgCanvas, shaderRender, state, onProgress, onComplet
   function renderLoop() {
     const elapsed = performance.now() - startTime;
     const progress = Math.min(elapsed / duration, 1);
-
     if (onProgress) onProgress(progress);
 
-    // Advance shader time
     shaderTime += 1 / 30;
     shaderRender(shaderTime);
-
-    // Composite
     drawCard(ctx, bgCanvas, state);
 
     if (elapsed < duration) {
@@ -202,4 +259,16 @@ export function exportVideo(bgCanvas, shaderRender, state, onProgress, onComplet
   }
 
   renderLoop();
+}
+
+// --- Auto-detect: MP4 if supported, WebM fallback ---
+
+export const supportsMP4 = typeof VideoEncoder !== 'undefined';
+
+export async function exportVideo(bgCanvas, shaderRender, state, onProgress, onComplete) {
+  if (supportsMP4) {
+    await exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onComplete);
+  } else {
+    exportVideoWebM(bgCanvas, shaderRender, state, onProgress, onComplete);
+  }
 }

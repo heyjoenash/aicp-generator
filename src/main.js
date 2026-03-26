@@ -1,5 +1,5 @@
 import { initShader } from './shader.js';
-import { exportPNG, exportVideo } from './export.js';
+import { exportPNG, exportVideo, supportsMP4 } from './export.js';
 
 // Funny category presets
 const CATEGORIES = [
@@ -234,19 +234,20 @@ exportPngBtn.addEventListener('click', () => {
   exportPNG(bgCanvas, state);
 });
 
-exportVideoBtn.addEventListener('click', () => {
+const formatLabel = supportsMP4 ? 'MP4' : 'WebM';
+exportVideoBtn.addEventListener('click', async () => {
   exportVideoBtn.disabled = true;
   exportPngBtn.disabled = true;
   exportStatus.style.display = 'block';
 
-  exportVideo(
+  await exportVideo(
     bgCanvas,
     (time) => shader.render(time),
     state,
     (progress) => {
       progressFill.style.width = `${progress * 100}%`;
       const secs = Math.ceil(6 * (1 - progress));
-      progressText.textContent = `Recording... ${secs}s remaining`;
+      progressText.textContent = `Encoding ${formatLabel}... ${secs}s remaining`;
     },
     () => {
       exportVideoBtn.disabled = false;
