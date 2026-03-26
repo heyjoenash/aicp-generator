@@ -6,7 +6,7 @@ const EXPORT_SIZE = 1080;
 const LAYOUT = {
   padding: 0.06,
   photo: { top: 0.06, width: 0.62, aspectRatio: 4 / 3.2 },
-  prefix: { top: 0.60, size: 0.032, weight: '400' },
+  prefix: { top: 0.59, size: 0.058, weight: '400' },
   title: { top: 0.645, size: 0.058, weight: '400' },
   category: { top: 0.72, size: 0.026, weight: '400', letterSpacing: 4 },
   name: { top: 0.80, size: 0.055, weight: '400', lineHeight: 1.05 },
@@ -122,10 +122,18 @@ function drawCard(ctx, bgCanvas, state) {
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
 
+  // Prefix with "NOT" in red — draw word by word
   ctx.font = `${LAYOUT.prefix.weight} ${S * LAYOUT.prefix.size}px Bebas Neue`;
-  ctx.globalAlpha = 0.9;
-  ctx.fillText(state.prefix, pad, S * LAYOUT.prefix.top);
   ctx.globalAlpha = 1.0;
+  const prefixWords = state.prefix.split(' ');
+  let px2 = pad;
+  const prefixY = S * LAYOUT.prefix.top;
+  for (const word of prefixWords) {
+    ctx.fillStyle = word === 'NOT' ? '#cc3333' : 'white';
+    ctx.fillText(word, px2, prefixY);
+    px2 += ctx.measureText(word + ' ').width;
+  }
+  ctx.fillStyle = 'white';
 
   ctx.font = `${LAYOUT.title.weight} ${S * LAYOUT.title.size}px Bebas Neue`;
   ctx.fillText(state.title, pad, S * LAYOUT.title.top);

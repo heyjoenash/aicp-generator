@@ -289,17 +289,47 @@ exportVideoBtn.addEventListener('click', async () => {
 const SITE_URL = window.location.origin;
 
 const POST_TEMPLATES = [
-  (s) => `We're devastated to announce that ${s.name} has, once again, NOT been selected as an AICP ${s.showType} Judge for ${s.category}. We are incredibly proud of their ability to watch from the couch. #AICP #NotSelected`,
+  (s) => `We're devastated to announce that ${s.name} has, once again, NOT been selected as an AICP ${s.showType} Judge for ${s.category}.
 
-  (s) => `Honored to NOT be representing anyone at this year's #AICP ${s.showType}. Looking forward to judging all of your work silently from LinkedIn.\n\n${s.name} | ${s.category} (Spectator)`,
+We are incredibly proud of their ability to watch from the couch.
 
-  (s) => `Almost too many years of making 'em, and at no point have they asked me to judge 'em. NOT honored to NOT be an AICP juror this year for ${s.category}. ::uncracks knuckles:: #AICP`,
+#AICP #NotSelected`,
 
-  (s) => `Proud to see our very own ${s.name} NOT named a Judge at AICP for ${s.category}. Well, somebody certainly didn't do their homework. #AICP #AICPAwards`,
+  (s) => `Honored to NOT be representing anyone at this year's #AICP ${s.showType}.
 
-  (s) => `Congratulations to everyone who was selected as an AICP judge this year. I was not. I'm fine. This is fine.\n\nGenerate yours at ${SITE_URL}\n\n#AICP #NotAJudge`,
+Looking forward to judging all of your work silently from LinkedIn.
 
-  (s) => `THRILLED to announce that ${s.name} will NOT be judging ${s.category} at the ${new Date().getFullYear()} AICP ${s.showType}. If anyone needs me, I'll be refreshing my email until ${new Date().getFullYear() + 1}. #AICP #MaybeNextYear`,
+${s.name} | ${s.category} (Spectator)`,
+
+  (s) => `Almost too many years of making 'em, and at no point have they asked me to judge 'em.
+
+NOT honored to NOT be an AICP juror this year for ${s.category}.
+
+::uncracks knuckles::
+
+#AICP`,
+
+  (s) => `Proud to see our very own ${s.name} NOT named a Judge at AICP for ${s.category}.
+
+Well, somebody certainly didn't do their homework.
+
+#AICP #AICPAwards`,
+
+  (s) => `Congratulations to everyone who was selected as an AICP judge this year.
+
+I was not.
+
+I'm fine. This is fine.
+
+Generate yours at ${SITE_URL}
+
+#AICP #NotAJudge`,
+
+  (s) => `THRILLED to announce that ${s.name} will NOT be judging ${s.category} at the ${new Date().getFullYear()} AICP ${s.showType}.
+
+If anyone needs me, I'll be refreshing my email until ${new Date().getFullYear() + 1}.
+
+#AICP #MaybeNextYear`,
 ];
 
 let postIndex = 0;
