@@ -51,7 +51,7 @@ header .strike {
 }
 
 header .subtitle {
-  color: #ccc;
+  color: #eee;
   font-size: clamp(0.85rem, 1.5vw, 1.15rem);
   margin-top: 1rem;
   max-width: 600px;
@@ -496,6 +496,30 @@ input[type="text"]::placeholder {
   color: var(--text-muted);
   margin-top: 0.5rem;
   line-height: 1.4;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 2.5rem 1rem 1.5rem;
+  margin-top: 2rem;
+  border-top: 1px solid #1a1a1a;
+}
+
+footer p {
+  font-size: 0.8rem;
+  color: #666;
+  line-height: 1.5;
+}
+
+footer a {
+  color: #999;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+footer a:hover {
+  color: #fff;
 }
 
 /* Tablet + Mobile: stack layout at 1024px (iPads in portrait) */

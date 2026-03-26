@@ -288,14 +288,16 @@ exportVideoBtn.addEventListener('click', async () => {
 
 const SITE_URL = window.location.origin;
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 const POST_TEMPLATES = [
   (s) => `We're devastated to announce that ${s.name} has, once again, NOT been selected as an AICP ${s.showType} Judge for ${s.category}.
 
-We are incredibly proud of their ability to watch from the couch.
+We are incredibly proud of their ability to not judge ${s.category}.
 
 #AICP #NotSelected`,
 
-  (s) => `Honored to NOT be representing anyone at this year's #AICP ${s.showType}.
+  (s) => `Honored to NOT be representing anyone at this year's #AICP ${s.showType} for ${s.category}.
 
 Looking forward to judging all of your work silently from LinkedIn.
 
@@ -317,7 +319,7 @@ Well, somebody certainly didn't do their homework.
 
   (s) => `Congratulations to everyone who was selected as an AICP judge this year.
 
-I was not.
+I was not. Especially not for ${s.category}.
 
 I'm fine. This is fine.
 
@@ -325,9 +327,9 @@ Generate yours at ${SITE_URL}
 
 #AICP #NotAJudge`,
 
-  (s) => `THRILLED to announce that ${s.name} will NOT be judging ${s.category} at the ${new Date().getFullYear()} AICP ${s.showType}.
+  (s) => `THRILLED to announce that ${s.name} will NOT be judging ${s.category} at the ${CURRENT_YEAR} AICP ${s.showType}.
 
-If anyone needs me, I'll be refreshing my email until ${new Date().getFullYear() + 1}.
+If anyone needs me, I'll be refreshing my email until ${CURRENT_YEAR + 1}.
 
 #AICP #MaybeNextYear`,
 ];
