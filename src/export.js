@@ -1,16 +1,11 @@
-// Export functions: composite card to canvas, export as PNG or MP4 video
+// Export functions: composite card to canvas, export as PNG or MP4/WebM video
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 
 const EXPORT_SIZE = 1080;
 
-// Layout constants (as fractions of EXPORT_SIZE)
 const LAYOUT = {
   padding: 0.06,
-  photo: {
-    top: 0.06,
-    width: 0.62,
-    aspectRatio: 4 / 3.2,
-  },
+  photo: { top: 0.06, width: 0.62, aspectRatio: 4 / 3.2 },
   prefix: { top: 0.60, size: 0.032, weight: '500' },
   title: { top: 0.645, size: 0.058, weight: '700' },
   category: { top: 0.72, size: 0.026, weight: '400', letterSpacing: 4 },
@@ -25,6 +20,63 @@ const logoImg = new Image();
 logoImg.onload = () => { logoImage = logoImg; };
 logoImg.src = '/aicp-logo.svg';
 
+// --- Video support detection ---
+
+function detectVideoSupport() {
+  if (typeof VideoEncoder !== 'undefined') return 'mp4-encoder';
+  if (typeof MediaRecorder !== 'undefined') {
+    if (MediaRecorder.isTypeSupported('video/mp4')) return 'mp4-recorder';
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) return 'webm-vp9';
+    if (MediaRecorder.isTypeSupported('video/webm')) return 'webm';
+  }
+  return null;
+}
+
+export const videoSupport = detectVideoSupport();
+
+export const videoFormatLabel = (() => {
+  if (!videoSupport) return null;
+  if (videoSupport.startsWith('mp4')) return 'MP4';
+  return 'WebM';
+})();
+
+// --- iOS-safe download ---
+
+function downloadBlob(blob, filename) {
+  const file = new File([blob], filename, { type: blob.type });
+
+  // Mobile: try native share sheet (save to files, share to LinkedIn, etc.)
+  if (navigator.share && navigator.canShare) {
+    try {
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file] }).catch(() => {
+          // User cancelled share — fall through to download
+          fallbackDownload(blob, filename);
+        });
+        return;
+      }
+    } catch (_) {
+      // canShare threw — fall through
+    }
+  }
+
+  fallbackDownload(blob, filename);
+}
+
+function fallbackDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Delay revocation so browser has time to start the download
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// --- Card drawing (shared by all export paths) ---
+
 function getPhotoElement() {
   const uploaded = document.getElementById('uploaded-photo');
   if (uploaded && uploaded.style.display !== 'none' && uploaded.src) return uploaded;
@@ -37,10 +89,8 @@ function drawCard(ctx, bgCanvas, state) {
   const S = EXPORT_SIZE;
   const pad = S * LAYOUT.padding;
 
-  // 1. Draw WebGL background
   ctx.drawImage(bgCanvas, 0, 0, S, S);
 
-  // 2. Draw photo
   const photoEl = getPhotoElement();
   if (photoEl) {
     const pw = S * LAYOUT.photo.width;
@@ -60,19 +110,14 @@ function drawCard(ctx, bgCanvas, state) {
     const dstAspect = pw / ph;
     let sx = 0, sy = 0, sw, sh;
     if (srcAspect > dstAspect) {
-      sh = srcH;
-      sw = sh * dstAspect;
-      sx = (srcW - sw) / 2;
+      sh = srcH; sw = sh * dstAspect; sx = (srcW - sw) / 2;
     } else {
-      sw = srcW;
-      sh = sw / dstAspect;
-      sy = (srcH - sh) / 2;
+      sw = srcW; sh = sw / dstAspect; sy = (srcH - sh) / 2;
     }
     tempCtx.drawImage(photoEl, sx, sy, sw, sh, 0, 0, pw, ph);
     ctx.drawImage(tempCanvas, px, py);
   }
 
-  // 3. Draw text
   ctx.fillStyle = 'white';
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
@@ -103,21 +148,18 @@ function drawCard(ctx, bgCanvas, state) {
   drawLogo(ctx, S, state.showType);
 }
 
-function drawLogo(ctx, S, showType) {
+function drawLogo(ctx, S) {
   if (!logoImage) return;
-
   const logoW = S * LAYOUT.logo.width;
   const logoH = logoW / 3.54;
   const lx = S - S * LAYOUT.logo.right - logoW;
   const ly = S - S * LAYOUT.logo.bottom - logoH - S * 0.03;
-
   ctx.drawImage(logoImage, lx, ly, logoW, logoH);
-
   ctx.font = `500 ${S * LAYOUT.logoText.size}px Bebas Neue`;
   ctx.fillStyle = 'white';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
-  ctx.fillText(`NOT AWARDS 2026`, S - S * LAYOUT.logo.right, ly + logoH + S * 0.008);
+  ctx.fillText('NOT AWARDS 2026', S - S * LAYOUT.logo.right, ly + logoH + S * 0.008);
   ctx.textAlign = 'left';
 }
 
@@ -128,22 +170,16 @@ export function exportPNG(bgCanvas, state) {
   canvas.width = EXPORT_SIZE;
   canvas.height = EXPORT_SIZE;
   const ctx = canvas.getContext('2d');
-
   drawCard(ctx, bgCanvas, state);
 
   canvas.toBlob((blob) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aicp-not-a-judge-${state.firstName || 'export'}.png`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `aicp-not-a-judge-${state.firstName || 'export'}.png`);
   }, 'image/png');
 }
 
-// --- MP4 Video Export (H.264 via mp4-muxer + VideoEncoder) ---
+// --- Tier 1: MP4 via VideoEncoder + mp4-muxer (Chrome/Edge) ---
 
-async function exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onComplete) {
+async function exportVideoMP4Encoder(bgCanvas, shaderRender, state, onProgress) {
   const canvas = document.createElement('canvas');
   canvas.width = EXPORT_SIZE;
   canvas.height = EXPORT_SIZE;
@@ -152,17 +188,13 @@ async function exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onCompl
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
     target,
-    video: {
-      codec: 'avc',
-      width: EXPORT_SIZE,
-      height: EXPORT_SIZE,
-    },
+    video: { codec: 'avc', width: EXPORT_SIZE, height: EXPORT_SIZE },
     fastStart: 'in-memory',
   });
 
   const encoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => console.error('VideoEncoder error:', e),
+    error: (e) => { throw new Error('VideoEncoder error: ' + e.message); },
   });
 
   encoder.configure({
@@ -173,7 +205,7 @@ async function exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onCompl
     framerate: 30,
   });
 
-  const totalFrames = 180; // 6 seconds at 30fps
+  const totalFrames = 180;
   let shaderTime = performance.now() / 1000;
 
   for (let i = 0; i < totalFrames; i++) {
@@ -181,15 +213,11 @@ async function exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onCompl
     shaderRender(shaderTime);
     drawCard(ctx, bgCanvas, state);
 
-    const frame = new VideoFrame(canvas, {
-      timestamp: (i / 30) * 1_000_000,
-    });
+    const frame = new VideoFrame(canvas, { timestamp: (i / 30) * 1_000_000 });
     encoder.encode(frame, { keyFrame: i % 30 === 0 });
     frame.close();
 
     if (onProgress) onProgress(i / totalFrames);
-
-    // Yield to UI thread every few frames so progress bar updates
     if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
   }
 
@@ -197,78 +225,152 @@ async function exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onCompl
   muxer.finalize();
 
   const blob = new Blob([target.buffer], { type: 'video/mp4' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `aicp-not-a-judge-${state.firstName || 'export'}.mp4`;
-  a.click();
-  URL.revokeObjectURL(url);
-  onComplete();
+  downloadBlob(blob, `aicp-not-a-judge-${state.firstName || 'export'}.mp4`);
 }
 
-// --- WebM fallback (Firefox) ---
+// --- Tier 2: MP4 via MediaRecorder (Safari desktop + iOS) ---
 
-function exportVideoWebM(bgCanvas, shaderRender, state, onProgress, onComplete) {
-  const canvas = document.createElement('canvas');
-  canvas.width = EXPORT_SIZE;
-  canvas.height = EXPORT_SIZE;
-  const ctx = canvas.getContext('2d');
+function exportVideoMP4Recorder(bgCanvas, shaderRender, state, onProgress) {
+  return new Promise((resolve, reject) => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = EXPORT_SIZE;
+      canvas.height = EXPORT_SIZE;
+      const ctx = canvas.getContext('2d');
 
-  const stream = canvas.captureStream(30);
-  const recorder = new MediaRecorder(stream, {
-    mimeType: 'video/webm;codecs=vp9',
-    videoBitsPerSecond: 8000000,
-  });
+      const stream = canvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'video/mp4',
+        videoBitsPerSecond: 8000000,
+      });
 
-  const chunks = [];
-  recorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data);
-  };
+      const chunks = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
 
-  recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aicp-not-a-judge-${state.firstName || 'export'}.webm`;
-    a.click();
-    URL.revokeObjectURL(url);
-    onComplete();
-  };
+      recorder.onerror = (e) => reject(new Error('MediaRecorder error: ' + e.error));
 
-  const duration = 6000;
-  const startTime = performance.now();
-  let shaderTime = performance.now() / 1000;
+      recorder.onstop = () => {
+        try {
+          const blob = new Blob(chunks, { type: 'video/mp4' });
+          downloadBlob(blob, `aicp-not-a-judge-${state.firstName || 'export'}.mp4`);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      };
 
-  recorder.start();
+      const duration = 6000;
+      const startTime = performance.now();
+      let shaderTime = performance.now() / 1000;
 
-  function renderLoop() {
-    const elapsed = performance.now() - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    if (onProgress) onProgress(progress);
+      recorder.start(1000); // Request data every 1s for smoother progress
 
-    shaderTime += 1 / 30;
-    shaderRender(shaderTime);
-    drawCard(ctx, bgCanvas, state);
+      function renderLoop() {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        if (onProgress) onProgress(progress);
 
-    if (elapsed < duration) {
-      requestAnimationFrame(renderLoop);
-    } else {
-      recorder.stop();
+        shaderTime += 1 / 30;
+        shaderRender(shaderTime);
+        drawCard(ctx, bgCanvas, state);
+
+        if (elapsed < duration) {
+          requestAnimationFrame(renderLoop);
+        } else {
+          recorder.stop();
+        }
+      }
+      renderLoop();
+    } catch (err) {
+      reject(err);
     }
-  }
-
-  renderLoop();
+  });
 }
 
-// --- Auto-detect: MP4 if supported, WebM fallback ---
+// --- Tier 3: WebM via MediaRecorder (Firefox) ---
 
-export const supportsMP4 = typeof VideoEncoder !== 'undefined';
+function exportVideoWebM(bgCanvas, shaderRender, state, onProgress) {
+  return new Promise((resolve, reject) => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = EXPORT_SIZE;
+      canvas.height = EXPORT_SIZE;
+      const ctx = canvas.getContext('2d');
 
-export async function exportVideo(bgCanvas, shaderRender, state, onProgress, onComplete) {
-  if (supportsMP4) {
-    await exportVideoMP4(bgCanvas, shaderRender, state, onProgress, onComplete);
-  } else {
-    exportVideoWebM(bgCanvas, shaderRender, state, onProgress, onComplete);
+      const stream = canvas.captureStream(30);
+
+      // Pick the best supported WebM codec
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm';
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: 8000000,
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onerror = (e) => reject(new Error('MediaRecorder error: ' + e.error));
+
+      recorder.onstop = () => {
+        try {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          downloadBlob(blob, `aicp-not-a-judge-${state.firstName || 'export'}.webm`);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      const duration = 6000;
+      const startTime = performance.now();
+      let shaderTime = performance.now() / 1000;
+
+      recorder.start(1000);
+
+      function renderLoop() {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        if (onProgress) onProgress(progress);
+
+        shaderTime += 1 / 30;
+        shaderRender(shaderTime);
+        drawCard(ctx, bgCanvas, state);
+
+        if (elapsed < duration) {
+          requestAnimationFrame(renderLoop);
+        } else {
+          recorder.stop();
+        }
+      }
+      renderLoop();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// --- Main export dispatcher ---
+
+export async function exportVideo(bgCanvas, shaderRender, state, onProgress) {
+  switch (videoSupport) {
+    case 'mp4-encoder':
+      await exportVideoMP4Encoder(bgCanvas, shaderRender, state, onProgress);
+      break;
+    case 'mp4-recorder':
+      await exportVideoMP4Recorder(bgCanvas, shaderRender, state, onProgress);
+      break;
+    case 'webm-vp9':
+    case 'webm':
+      await exportVideoWebM(bgCanvas, shaderRender, state, onProgress);
+      break;
+    default:
+      throw new Error('Video export is not supported in this browser.');
   }
 }

@@ -1,5 +1,5 @@
 import { initShader } from './shader.js';
-import { exportPNG, exportVideo, supportsMP4 } from './export.js';
+import { exportPNG, exportVideo, videoSupport, videoFormatLabel } from './export.js';
 
 // Funny category presets
 const CATEGORIES = [
@@ -234,28 +234,37 @@ exportPngBtn.addEventListener('click', () => {
   exportPNG(bgCanvas, state);
 });
 
-const formatLabel = supportsMP4 ? 'MP4' : 'WebM';
+// Disable video button if browser can't export video at all
+if (!videoSupport) {
+  exportVideoBtn.disabled = true;
+  exportVideoBtn.title = 'Video export not supported in this browser';
+}
+
 exportVideoBtn.addEventListener('click', async () => {
   exportVideoBtn.disabled = true;
   exportPngBtn.disabled = true;
   exportStatus.style.display = 'block';
 
-  await exportVideo(
-    bgCanvas,
-    (time) => shader.render(time),
-    state,
-    (progress) => {
-      progressFill.style.width = `${progress * 100}%`;
-      const secs = Math.ceil(6 * (1 - progress));
-      progressText.textContent = `Encoding ${formatLabel}... ${secs}s remaining`;
-    },
-    () => {
-      exportVideoBtn.disabled = false;
-      exportPngBtn.disabled = false;
-      exportStatus.style.display = 'none';
-      progressFill.style.width = '0%';
-    },
-  );
+  try {
+    await exportVideo(
+      bgCanvas,
+      (time) => shader.render(time),
+      state,
+      (progress) => {
+        progressFill.style.width = `${progress * 100}%`;
+        const secs = Math.ceil(6 * (1 - progress));
+        progressText.textContent = `Encoding ${videoFormatLabel}... ${secs}s remaining`;
+      },
+    );
+  } catch (err) {
+    console.error('Video export failed:', err);
+    alert('Video export failed. Try downloading as PNG instead.');
+  } finally {
+    exportVideoBtn.disabled = !videoSupport;
+    exportPngBtn.disabled = false;
+    exportStatus.style.display = 'none';
+    progressFill.style.width = '0%';
+  }
 });
 
 // Initialize
