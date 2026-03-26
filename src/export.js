@@ -6,9 +6,10 @@ const EXPORT_SIZE = 1080;
 const LAYOUT = {
   padding: 0.06,
   photo: { top: 0.06, width: 0.62, aspectRatio: 4 / 3.2 },
-  prefix: { top: 0.59, size: 0.058, weight: '400' },
-  title: { top: 0.645, size: 0.058, weight: '400' },
-  category: { top: 0.72, size: 0.026, weight: '400', letterSpacing: 4 },
+  setup: { top: 0.575, size: 0.030, weight: '400' },
+  prefix: { top: 0.605, size: 0.058, weight: '400' },
+  title: { top: 0.66, size: 0.058, weight: '400' },
+  category: { top: 0.725, size: 0.026, weight: '400', letterSpacing: 4 },
   name: { top: 0.80, size: 0.055, weight: '400', lineHeight: 1.05 },
   logo: { bottom: 0.05, right: 0.06, width: 0.18 },
   logoText: { size: 0.016 },
@@ -122,21 +123,25 @@ function drawCard(ctx, bgCanvas, state) {
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
 
-  // Prefix with "NOT" in red — draw word by word
-  ctx.font = `${LAYOUT.prefix.weight} ${S * LAYOUT.prefix.size}px Bebas Neue`;
-  ctx.globalAlpha = 1.0;
-  const prefixWords = state.prefix.split(' ');
-  let px2 = pad;
-  const prefixY = S * LAYOUT.prefix.top;
-  for (const word of prefixWords) {
-    ctx.fillStyle = word === 'NOT' ? '#cc3333' : 'white';
-    ctx.fillText(word, px2, prefixY);
-    px2 += ctx.measureText(word + ' ').width;
-  }
+  // Setup line: "ONCE AGAIN,"
+  ctx.font = `${LAYOUT.setup.weight} ${S * LAYOUT.setup.size}px Bebas Neue`;
+  ctx.globalAlpha = 0.7;
   ctx.fillStyle = 'white';
+  ctx.fillText('ONCE AGAIN,', pad, S * LAYOUT.setup.top);
+  ctx.globalAlpha = 1.0;
 
+  // Prefix: "NOT-A-JUDGE" with NOT in red
+  ctx.font = `${LAYOUT.prefix.weight} ${S * LAYOUT.prefix.size}px Bebas Neue`;
+  ctx.fillStyle = '#cc3333';
+  ctx.fillText('NOT', pad, S * LAYOUT.prefix.top);
+  const notWidth = ctx.measureText('NOT').width;
+  ctx.fillStyle = 'white';
+  ctx.fillText('-A-JUDGE', pad + notWidth, S * LAYOUT.prefix.top);
+
+  // Title: "AICP POST AWARDS"
   ctx.font = `${LAYOUT.title.weight} ${S * LAYOUT.title.size}px Bebas Neue`;
-  ctx.fillText(state.title, pad, S * LAYOUT.title.top);
+  ctx.fillStyle = 'white';
+  ctx.fillText('AICP ' + state.showType, pad, S * LAYOUT.title.top);
 
   ctx.font = `${LAYOUT.category.weight} ${S * LAYOUT.category.size}px Fira Mono`;
   ctx.globalAlpha = 0.7;

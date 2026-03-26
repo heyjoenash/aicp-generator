@@ -21,8 +21,8 @@ const state = {
   lastName: '',
   category: 'WATCHING FROM THE COUCH',
   showType: 'POST AWARDS',
-  prefix: 'ONCE AGAIN, NOT AN',
-  title: 'AICP POST AWARDS JUDGE',
+  prefix: 'NOT-A-JUDGE',
+  title: 'AICP POST AWARDS',
   hasPhoto: false,
   webcamActive: false,
 };
@@ -81,7 +81,7 @@ animationId = requestAnimationFrame(animate);
 // --- Live Preview Updates ---
 
 function updatePreview() {
-  prefixText.textContent = state.prefix;
+  // prefixText ("NOT-A-JUDGE") is static HTML with red span — don't overwrite
   titleText.textContent = state.title;
   categoryText.textContent = state.category;
   firstNameText.textContent = state.firstName || 'YOUR';
@@ -119,7 +119,7 @@ toggleBtns.forEach((btn) => {
     toggleBtns.forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     state.showType = btn.dataset.value;
-    state.title = `AICP ${state.showType} JUDGE`;
+    state.title = `AICP ${state.showType}`;
     updatePreview();
   });
 });
