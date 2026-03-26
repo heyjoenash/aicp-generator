@@ -146,28 +146,27 @@ const fragmentShaderSource = `
     // Base color — near pure black
     vec3 color = vec3(0.005, 0.005, 0.008);
 
-    // Key light contributions
-    color += sharpSpec1 * 1.0 * vec3(0.92, 0.92, 0.96);   // Sharp chrome peak
-    color += medSpec1 * 0.18 * vec3(0.7, 0.7, 0.75);       // Medium glow
-    color += broadSpec1 * 0.03 * vec3(0.4, 0.4, 0.45);     // Ambient sheen
+    // Key light contributions — boosted for brighter, wider highlights
+    color += sharpSpec1 * 1.2 * vec3(0.95, 0.95, 1.0);    // Bright chrome peak
+    color += medSpec1 * 0.35 * vec3(0.8, 0.8, 0.85);       // Wider medium glow
+    color += broadSpec1 * 0.08 * vec3(0.5, 0.5, 0.55);     // Ambient sheen
 
-    // Fill light contributions
-    color += sharpSpec2 * 0.7 * vec3(0.85, 0.85, 0.9);
-    color += medSpec2 * 0.12 * vec3(0.5, 0.5, 0.55);
+    // Fill light contributions — boosted
+    color += sharpSpec2 * 0.9 * vec3(0.9, 0.9, 0.95);
+    color += medSpec2 * 0.25 * vec3(0.6, 0.6, 0.65);
 
-    // Rim
-    color += spec3 * 0.25 * vec3(0.6, 0.6, 0.65);
+    // Rim — brighter
+    color += spec3 * 0.35 * vec3(0.7, 0.7, 0.75);
 
-    // Fresnel edge glow
-    color += fresnel * 0.08 * vec3(0.5, 0.5, 0.55);
+    // Fresnel edge glow — more visible on wave crests
+    color += fresnel * 0.12 * vec3(0.6, 0.6, 0.65);
 
-    // Aggressive vignette — darken edges like the real AICP frames
-    float vig = 1.0 - 0.5 * pow(length(uv - 0.5) * 1.4, 2.0);
+    // Vignette — slightly softer than before
+    float vig = 1.0 - 0.4 * pow(length(uv - 0.5) * 1.3, 2.0);
     color *= max(vig, 0.0);
 
-    // EXTREME contrast curve — crush the shadows, separate the highlights
-    // This is the key to matching the real AICP look (near-black valleys, pure-white peaks)
-    color = pow(color, vec3(1.8));
+    // Contrast curve — slightly less aggressive so highlights stay bright
+    color = pow(color, vec3(1.5));
 
     // Clamp and output
     color = clamp(color, 0.0, 1.0);
