@@ -425,6 +425,58 @@ input[type="text"]::placeholder {
   color: var(--text-muted);
 }
 
+/* LinkedIn Post Section */
+.linkedin-group {
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+#post-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.85rem;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  min-height: 80px;
+  user-select: all;
+}
+
+.post-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.post-actions .btn {
+  flex: 1;
+}
+
+.btn-linkedin {
+  background: #0A66C2;
+  color: white;
+  border-color: #0A66C2;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.btn-linkedin:hover {
+  background: #004182;
+  border-color: #004182;
+}
+
+.post-instructions {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
 /* Tablet + Mobile: stack layout at 1024px (iPads in portrait) */
 @media (max-width: 1024px) {
   #main-layout {

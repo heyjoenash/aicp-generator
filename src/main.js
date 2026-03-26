@@ -267,6 +267,83 @@ exportVideoBtn.addEventListener('click', async () => {
   }
 });
 
+// --- LinkedIn Post Generator ---
+
+const SITE_URL = window.location.origin;
+
+const POST_TEMPLATES = [
+  (s) => `We're devastated to announce that ${s.name} has, once again, NOT been selected as an AICP ${s.showType} Judge for ${s.category}. We are incredibly proud of their ability to watch from the couch. #AICP #NotSelected`,
+
+  (s) => `Honored to NOT be representing anyone at this year's #AICP ${s.showType}. Looking forward to judging all of your work silently from LinkedIn.\n\n${s.name} | ${s.category} (Spectator)`,
+
+  (s) => `Almost too many years of making 'em, and at no point have they asked me to judge 'em. NOT honored to NOT be an AICP juror this year for ${s.category}. ::uncracks knuckles:: #AICP`,
+
+  (s) => `Proud to see our very own ${s.name} NOT named a Judge at AICP for ${s.category}. Well, somebody certainly didn't do their homework. #AICP #AICPAwards`,
+
+  (s) => `Congratulations to everyone who was selected as an AICP judge this year. I was not. I'm fine. This is fine.\n\nGenerate yours at ${SITE_URL}\n\n#AICP #NotAJudge`,
+
+  (s) => `THRILLED to announce that ${s.name} will NOT be judging ${s.category} at the 2026 AICP ${s.showType}. If anyone needs me, I'll be refreshing my email until 2027. #AICP #MaybeNextYear`,
+];
+
+let postIndex = 0;
+const postPreview = document.getElementById('post-preview');
+const shufflePostBtn = document.getElementById('shuffle-post-btn');
+const copyPostBtn = document.getElementById('copy-post-btn');
+const openLinkedinBtn = document.getElementById('open-linkedin-btn');
+
+function getPostState() {
+  const fullName = [state.firstName, state.lastName].filter(Boolean).join(' ') || 'YOUR NAME';
+  return {
+    name: fullName,
+    category: state.category || 'WATCHING FROM THE COUCH',
+    showType: state.showType || 'POST AWARDS',
+  };
+}
+
+function generatePost() {
+  const text = POST_TEMPLATES[postIndex](getPostState());
+  postPreview.textContent = text;
+  return text;
+}
+
+shufflePostBtn.addEventListener('click', () => {
+  postIndex = (postIndex + 1) % POST_TEMPLATES.length;
+  generatePost();
+});
+
+copyPostBtn.addEventListener('click', async () => {
+  const text = generatePost();
+  try {
+    await navigator.clipboard.writeText(text);
+    const original = copyPostBtn.textContent;
+    copyPostBtn.textContent = 'Copied!';
+    setTimeout(() => { copyPostBtn.textContent = original; }, 2000);
+  } catch {
+    // Fallback: select text in the preview
+    const range = document.createRange();
+    range.selectNodeContents(postPreview);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  }
+});
+
+openLinkedinBtn.addEventListener('click', async () => {
+  const text = generatePost();
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // clipboard failed — user will need to copy manually
+  }
+  window.open('https://www.linkedin.com/feed/?shareActive=true', '_blank');
+});
+
+// Hook into updatePreview so post regenerates as user types
+const _origUpdatePreview = updatePreview;
+updatePreview = function() {
+  _origUpdatePreview();
+  generatePost();
+};
+
 // Initialize
 showPhotoState('empty');
 updatePreview();
