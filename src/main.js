@@ -269,7 +269,8 @@ exportVideoBtn.addEventListener('click', async () => {
       state,
       (progress) => {
         progressFill.style.width = `${progress * 100}%`;
-        const secs = Math.ceil(6 * (1 - progress));
+        const totalSecs = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 4 : 6;
+        const secs = Math.ceil(totalSecs * (1 - progress));
         progressText.textContent = `Encoding ${videoFormatLabel}... ${secs}s remaining`;
       },
     );
