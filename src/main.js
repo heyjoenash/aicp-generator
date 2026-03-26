@@ -126,6 +126,12 @@ toggleBtns.forEach((btn) => {
 
 // --- Photo Handling ---
 
+function setExportEnabled(enabled) {
+  exportPngBtn.disabled = !enabled;
+  if (videoSupport) exportVideoBtn.disabled = !enabled;
+  openLinkedinBtn.disabled = !enabled;
+}
+
 function showPhotoState(mode) {
   webcamVideo.style.display = 'none';
   uploadedPhoto.style.display = 'none';
@@ -138,15 +144,19 @@ function showPhotoState(mode) {
     webcamVideo.style.display = 'block';
     captureBtn.style.display = 'inline-flex';
     retakeBtn.style.display = 'none';
+    setExportEnabled(false);
   } else if (mode === 'captured') {
     photoCanvas.style.display = 'block';
     retakeBtn.style.display = 'inline-flex';
     captureBtn.style.display = 'none';
+    setExportEnabled(true);
   } else if (mode === 'uploaded') {
     uploadedPhoto.style.display = 'block';
     retakeBtn.style.display = 'inline-flex';
+    setExportEnabled(true);
   } else {
     photoPlaceholder.style.display = 'flex';
+    setExportEnabled(false);
   }
 }
 
