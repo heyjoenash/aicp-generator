@@ -236,13 +236,10 @@ header .subtitle {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.step:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 1.25rem;
 }
 
 .step-header {
@@ -255,7 +252,7 @@ header .subtitle {
 .step-number {
   font-family: var(--font-card);
   font-size: 1.8rem;
-  color: #333;
+  color: #555;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -270,7 +267,7 @@ header .subtitle {
 
 .step-subtitle {
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: #999;
   line-height: 1.4;
   margin-top: 0.15rem;
 }
