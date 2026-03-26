@@ -57,7 +57,6 @@ const titleText = document.getElementById('title-text');
 const categoryText = document.getElementById('category-text');
 const firstNameText = document.getElementById('first-name');
 const lastNameText = document.getElementById('last-name');
-const showTypeLabel = document.getElementById('show-type-label');
 const toggleBtns = document.querySelectorAll('.toggle-btn');
 
 // Initialize shader
@@ -86,7 +85,6 @@ function updatePreview() {
   categoryText.textContent = state.category;
   firstNameText.textContent = state.firstName || 'YOUR';
   lastNameText.textContent = state.lastName || 'NAME';
-  showTypeLabel.textContent = state.showType;
 }
 
 firstNameInput.addEventListener('input', (e) => {
