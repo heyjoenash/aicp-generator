@@ -29,7 +29,12 @@ logoImg.src = '/aicp-logo.svg';
 
 // --- Video support detection ---
 
+// iOS (all browsers use WebKit) can't record canvas streams via MediaRecorder
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 function detectVideoSupport() {
+  if (isIOS) return null; // Canvas stream recording broken on all iOS browsers
   if (typeof VideoEncoder !== 'undefined') return 'mp4-encoder';
   if (typeof MediaRecorder !== 'undefined') {
     if (MediaRecorder.isTypeSupported('video/mp4')) return 'mp4-recorder';

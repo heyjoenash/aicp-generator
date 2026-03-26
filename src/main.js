@@ -251,10 +251,11 @@ exportPngBtn.addEventListener('click', () => {
   exportPNG(bgCanvas, state);
 });
 
-// Disable video button if browser can't export video at all
+// Disable video button if browser can't export video (iOS)
 if (!videoSupport) {
   exportVideoBtn.disabled = true;
-  exportVideoBtn.title = 'Video export not supported in this browser';
+  exportVideoBtn.textContent = 'Video (desktop only)';
+  exportVideoBtn.title = 'Video export requires a desktop browser. Download PNG instead!';
 }
 
 exportVideoBtn.addEventListener('click', async () => {
