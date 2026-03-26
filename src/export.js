@@ -99,7 +99,6 @@ function drawCard(ctx, bgCanvas, state, S) {
     tempCanvas.width = pw;
     tempCanvas.height = ph;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.filter = 'grayscale(1)';
 
     const srcW = photoEl.videoWidth || photoEl.naturalWidth || photoEl.width;
     const srcH = photoEl.videoHeight || photoEl.naturalHeight || photoEl.height;
@@ -112,6 +111,16 @@ function drawCard(ctx, bgCanvas, state, S) {
       sw = srcW; sh = sw / dstAspect; sy = (srcH - sh) / 2;
     }
     tempCtx.drawImage(photoEl, sx, sy, sw, sh, 0, 0, pw, ph);
+
+    // Manual grayscale — canvas filter not supported on iOS
+    const imgData = tempCtx.getImageData(0, 0, pw, ph);
+    const d = imgData.data;
+    for (let j = 0; j < d.length; j += 4) {
+      const gray = d[j] * 0.299 + d[j+1] * 0.587 + d[j+2] * 0.114;
+      d[j] = d[j+1] = d[j+2] = gray;
+    }
+    tempCtx.putImageData(imgData, 0, 0);
+
     ctx.drawImage(tempCanvas, px, py);
   }
 
